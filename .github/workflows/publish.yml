@@ -26,21 +26,21 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            m2s2-math/target
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: cargo fmt --check
-        run: cargo fmt --check --manifest-path m2s2-math/Cargo.toml
+        run: cargo fmt --check
 
       - name: cargo clippy
-        run: cargo clippy --manifest-path m2s2-math/Cargo.toml -- -D warnings
+        run: cargo clippy -- -D warnings
 
       - name: cargo build
-        run: cargo build --manifest-path m2s2-math/Cargo.toml
+        run: cargo build
 
       - name: cargo test
-        run: cargo test --manifest-path m2s2-math/Cargo.toml
+        run: cargo test
 
   publish:
     name: Publish to crates.io
@@ -63,6 +63,6 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-publish-
 
       - name: cargo publish
-        run: cargo publish --manifest-path m2s2-math/Cargo.toml
+        run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
