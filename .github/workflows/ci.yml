@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: fmt → clippy → build → test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            m2s2-math/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: cargo fmt --check
+        run: cargo fmt --check --manifest-path m2s2-math/Cargo.toml
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path m2s2-math/Cargo.toml -- -D warnings
+
+      - name: cargo build
+        run: cargo build --manifest-path m2s2-math/Cargo.toml
+
+      - name: cargo test
+        run: cargo test --manifest-path m2s2-math/Cargo.toml
