@@ -1,6 +1,8 @@
 mod matrix;
-mod quaternian;
+mod quaternion;
 mod vector;
+
+pub use crate::quaternion::{Quaternion, Quaternionf32, Quaternionf64};
 
 pub use crate::matrix::{
     Matrix2x2f32, Matrix2x2f64, Matrix2x2i32, Matrix2x2i64, Matrix3x3f32, Matrix3x3f64,
@@ -12,8 +14,8 @@ pub use crate::vector::{
 };
 
 // Export graphics traits for users who want to use them directly
-pub use crate::matrix::transfom_traits::{Transform2x2, Transform3x3, Transform4x4};
-pub use crate::vector::vector_ops::{Vector2Ops, Vector3Ops};
+pub use crate::matrix::transform_traits::{Transform2x2, Transform3x3, Transform4x4};
+pub use crate::vector::vector_ops::{Vector2Ops, Vector3Ops, Vector4Ops};
 
 #[cfg(test)]
 mod tests {
@@ -185,7 +187,9 @@ mod tests {
         let identity_mat = Matrix4x4f32::identity();
         assert_eq!(
             identity_mat.as_slice(),
-            [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+            [
+                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
+            ]
         );
     }
 
@@ -336,11 +340,51 @@ mod tests {
             [0.0, 0.0, 0.0, 1.0],
         ]);
         let result = mat_a * mat_b; // Apply rotation THEN translation (Uses Mul<Matrix> trait)
-                                    // Expected: [[0, -1, 0, 1], [1, 0, 0, 2], [0, 0, 1, 0], [0, 0, 0, 1]]
+        // Expected: [[0, -1, 0, 1], [1, 0, 0, 2], [0, 0, 1, 0], [0, 0, 0, 1]]
         assert_eq!(
             result.as_slice(),
-            [0.0, -1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+            [
+                0.0, -1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
+            ]
         );
+    }
+
+    #[test]
+    fn test_matrix4x4_sub() {
+        let mat1 =
+            Matrix4x4i32::from_2d_array([[5, 5, 5, 5], [5, 5, 5, 5], [5, 5, 5, 5], [5, 5, 5, 5]]);
+        let mat2 =
+            Matrix4x4i32::from_2d_array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]);
+        let result = mat1 - mat2;
+        assert_eq!(
+            result.as_slice(),
+            [4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1]
+        );
+    }
+
+    #[test]
+    fn test_matrix_transpose() {
+        let mat = Matrix4x4i32::from_2d_array([
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [9, 10, 11, 12],
+            [13, 14, 15, 16],
+        ]);
+        let t = mat.transpose();
+        assert_eq!(
+            t.as_slice(),
+            [1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16]
+        );
+        // Double-transpose is identity
+        assert_eq!(mat.transpose().transpose().as_slice(), mat.as_slice());
+    }
+
+    #[test]
+    fn test_matrix2x2_sub() {
+        let mat1 = Matrix2x2f32::from_2d_array([[5.0, 4.0], [3.0, 2.0]]);
+        let mat2 = Matrix2x2f32::from_2d_array([[1.0, 1.0], [1.0, 1.0]]);
+        let result = mat1 - mat2;
+        assert_eq!(result.as_slice(), [4.0, 3.0, 2.0, 1.0]);
     }
 
     #[test]
@@ -348,7 +392,7 @@ mod tests {
         let mat1 = Matrix2x2i32::from_2d_array([[1, 2], [3, 4]]);
         let mat2 = Matrix2x2i32::from_2d_array([[5, 6], [7, 8]]);
         let result = mat1 * mat2; // Uses Mul<Matrix> trait
-                                  // Expected: [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]] = [[5+14, 6+16], [15+28, 18+32]] = [[19, 22], [43, 50]]
+        // Expected: [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]] = [[5+14, 6+16], [15+28, 18+32]] = [[19, 22], [43, 50]]
         assert_eq!(result.as_slice(), [19, 22, 43, 50]);
     }
 }

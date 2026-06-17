@@ -22,7 +22,7 @@ pub type Vector4f64 = Vector4<f64>;
 use std::slice;
 use std::{
     mem::MaybeUninit,
-    ops::{Add, AddAssign, Index, IndexMut, Mul, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, Index, IndexMut, Mul, Neg, Sub, SubAssign},
     ptr,
 };
 
@@ -101,6 +101,19 @@ impl<T: Copy, const D: usize> Vector<T, D> {
         &self.data
     }
 
+    fn map_unary<F>(&self, f: F) -> Self
+    where
+        F: Fn(T) -> T,
+    {
+        let mut res: MaybeUninit<[T; D]> = MaybeUninit::uninit();
+        let res_ptr = res.as_mut_ptr() as *mut T;
+        for i in 0..D {
+            unsafe { ptr::write(res_ptr.add(i), f(self.data[i])) };
+        }
+        let data = unsafe { res.assume_init() };
+        Vector { data }
+    }
+
     fn compute_binary<F>(&self, rhs: &Self, computed_val: F) -> Self
     where
         F: Fn(T, T) -> T,
@@ -174,30 +187,21 @@ impl<T: SubAssign + Copy, const D: usize> SubAssign<&Self> for Vector<T, D> {
 impl<T: Mul<Output = T> + Copy, const D: usize> Mul<T> for Vector<T, D> {
     type Output = Self;
     fn mul(self, scalar: T) -> Self {
-        let mut res: MaybeUninit<[T; D]> = MaybeUninit::uninit();
-        let res_ptr = res.as_mut_ptr() as *mut T;
-        for i in 0..D {
-            let computed_val = self.data[i] * scalar;
-            unsafe { ptr::write(res_ptr.add(i), computed_val) };
-        }
+        self.map_unary(|a| a * scalar)
+    }
+}
 
-        let data = unsafe { res.assume_init() };
-        Vector { data }
+impl<T: Div<Output = T> + Copy, const D: usize> Div<T> for Vector<T, D> {
+    type Output = Self;
+    fn div(self, scalar: T) -> Self {
+        self.map_unary(|a| a / scalar)
     }
 }
 
 impl<T: Neg<Output = T> + Copy, const D: usize> Neg for Vector<T, D> {
     type Output = Self;
     fn neg(self) -> Self {
-        let mut res: MaybeUninit<[T; D]> = MaybeUninit::uninit();
-        let res_ptr = res.as_mut_ptr() as *mut T;
-        for i in 0..D {
-            let computed_val = -self.data[i];
-            unsafe { ptr::write(res_ptr.add(i), computed_val) };
-        }
-
-        let data = unsafe { res.assume_init() };
-        Vector { data }
+        self.map_unary(|a| -a)
     }
 }
 

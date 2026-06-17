@@ -8,11 +8,11 @@ use std::{
 };
 
 mod base_ops;
-mod indentity_ops;
+mod identity_ops;
 mod mat_mul_mat;
 mod mat_mul_vec;
-pub mod transfom_traits;
 pub mod transform_impl;
+pub mod transform_traits;
 
 macro_rules! define_matrix_struct {
     ($name:ident, $rows:expr, $cols:expr, $size:expr) => {
@@ -88,6 +88,19 @@ macro_rules! define_matrix_struct {
             }
             pub fn as_slice(&self) -> &[T] {
                 &self.data
+            }
+
+            pub fn transpose(&self) -> Self {
+                let mut result: MaybeUninit<[T; $size]> = MaybeUninit::uninit();
+                let res_ptr = result.as_mut_ptr() as *mut T;
+                for i in 0..$rows {
+                    for j in 0..$cols {
+                        unsafe { ptr::write(res_ptr.add(j * $cols + i), self.data[i * $cols + j]) };
+                    }
+                }
+                $name {
+                    data: unsafe { result.assume_init() },
+                }
             }
 
             fn map_unary<F>(&self, f: F) -> Self

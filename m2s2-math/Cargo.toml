@@ -2,6 +2,13 @@
 name = "m2s2-math"
 version = "0.1.0"
 edition = "2024"
+authors = ["Michael Masterson <mgmastersonjr@gmail.com>"]
+description = "A linear algebra library for game engines and renderers — vectors, matrices, and quaternions with multi-API projection support (Vulkan, Metal, OpenGL, D3D)."
+license = "MIT"
+repository = "https://github.com/mgmaster24/m2s2-rust-math"
+readme = "README.md"
+keywords = ["math", "linear-algebra", "gamedev", "vulkan", "quaternion"]
+categories = ["game-engines", "mathematics", "rendering"]
 
 [dependencies]
 num-traits = "0.2"
