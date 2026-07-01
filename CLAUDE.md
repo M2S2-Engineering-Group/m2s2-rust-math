@@ -42,11 +42,22 @@ Two-crate workspace, one-directional dependency:
 - `sat_obb3` in `obb.rs` is the classical 15-axis OBB-OBB SAT test (Ericson, *Real-Time Collision Detection* §4.4.1). It is **deliberately not unified** with the 2D 4-axis SAT test in the same file, even though both are "SAT" — the 3D case needs `R`/`|R|` rotation-matrix bookkeeping for near-parallel-edge degeneracy that has no 2D analog. Don't try to generalize these into one function.
 - Test convention (whole workspace): each file has its own `#[cfg(test)] mod tests` with a locally-defined `approx_eq` helper — there is no shared test-utility crate. Follow this pattern rather than introducing one.
 
+## Allocation & concurrency design rationale (researched precedent)
+
+This came up when the user asked whether a game math library needs a custom allocator and how to think about concurrency. Researched `nalgebra` for comparison (see sources below) rather than answer from assumption:
+
+- **nalgebra's allocation model**: not a custom/arena allocator. It has an `Allocator` trait + `DefaultAllocator` that picks between two storage backends *at compile time*: `ArrayStorage` (plain stack array) when every dimension is known at compile time (e.g. `Vector3<f32>`, `Matrix4<f32>`), or `VecStorage` (a plain `std::Vec<T>`, not `Box<T>`) when a dimension is `Dyn` (runtime-sized, e.g. `DVector<f32>`). The heap path only exists to support nalgebra's general/scientific-computing use case (arbitrary N×M matrices, solvers) — a use case this workspace's `Vector<T, const D>` (D=2/3/4 only) and fixed `Matrix2x2/3x3/4x4` deliberately don't support. For the fixed-size types a game would actually use, nalgebra is stack-only too, same as us.
+- **Concurrency**: nothing special needed at the math-primitives layer. Fixed-size value types with no interior mutability are automatically `Send`/`Sync` when `T` is (true for nalgebra's, glam's, and this workspace's types alike). The real concurrency problem (shared mutable world/physics/ECS state, parallel systems) lives at the *engine* layer, same boundary as the allocation split documented above — no math library solves it, an ECS scheduler does.
+- **"Is allocation-free not game-ready?"** — the opposite. Bevy evaluated nalgebra and chose **glam** instead specifically because glam is SIMD-optimized, fixed-size-only, and has no dynamic-allocator abstraction to pay for. This workspace's design (const-generic fixed dims, `Copy` stack types, no `Dyn` support) is architecturally closer to glam's philosophy than nalgebra's — that's the right call for a game math library, not a gap.
+- **Actual gap worth knowing about**: SIMD. glam's real performance edge over both nalgebra's scalar path and this workspace's current code is `std::simd`/platform-intrinsic use. Legitimate future optimization, but a separate, opt-in concern — not an allocation or concurrency problem, and not something to chase without a profiling reason.
+
+Sources: [nalgebra `DefaultAllocator` docs](https://docs.rs/nalgebra/latest/nalgebra/base/default_allocator/struct.DefaultAllocator.html), [`Allocator` trait docs](https://docs.rs/nalgebra/latest/nalgebra/base/allocator/trait.Allocator.html), [`VecStorage` docs](https://docs.rs/nalgebra/latest/nalgebra/base/struct.VecStorage.html), [Bevy discussion #3231 on switching vector crates](https://github.com/bevyengine/bevy/discussions/3231), [glam/mathbench introduction](https://bitshifter.github.io/2019/07/10/introducing-glam-and-mathbench/).
+
 ## Versioning gotcha (read before publishing anything)
 
 `m2s2-math 0.1.0` is already published on crates.io and is **immutable**. `m2s2-math` is currently at `0.2.0` in `Cargo.toml` (bumped for the API surface added in the session that split off `m2s2-geometry` — Vector distance/lerp/reflect/etc., Matrix trace/determinant/inverse) but **0.2.0 has not been published yet**. Before publishing again: any further public-API change to `m2s2-math` needs another version bump — you cannot republish an existing version with different content. `m2s2-geometry/Cargo.toml`'s `m2s2-math = { path = "..", version = "X" }` must be kept in sync with whatever version `m2s2-math` actually is.
 
-`.github/workflows/publish.yml` publishes `m2s2-math` first, then `m2s2-geometry` with a retry loop (crates.io index-propagation lag) — this ordering is required; don't reorder or parallelize it.
+`.github/workflows/ci.yml` has a single `publish` job (gated on `needs: ci` and `if: github.ref == 'refs/heads/main' && github.event_name == 'push'`) that publishes `m2s2-math` first, then `m2s2-geometry` with a retry loop (crates.io index-propagation lag) — this ordering is required; don't reorder or parallelize it. There used to be a separate `publish.yml` with its own duplicate `ci` job; that duplication was removed by merging everything into one workflow file so publish is gated on the *real* CI run instead of a private re-run of the same checks — don't reintroduce a second workflow file for this.
 
 ## Current status / recent history
 
@@ -59,6 +70,8 @@ What happened, in order:
 4. Fixed real bugs the workspace conversion introduced: CI wasn't testing `m2s2-geometry` at all (missing `--workspace`), and `cargo publish` couldn't work unqualified against a two-member workspace.
 5. Added the `.githooks/pre-commit` hook and README "Development"/"Allocation strategy" sections.
 6. Caught and fixed a real problem before publishing: `m2s2-math 0.1.0` was already live on crates.io, so the new methods added in this session couldn't ship under that version number — bumped to `0.2.0`.
+7. Researched nalgebra's allocation model and Bevy's glam-over-nalgebra rationale (see "Allocation & concurrency design rationale" above) to validate this workspace's allocation-free, fixed-size design.
+8. Merged `publish.yml` into `ci.yml` (single `publish` job, `needs: ci`, `if` restricted to push-to-main) so publish is gated on the real CI run instead of a duplicated private copy of the same checks — `publish.yml` no longer exists.
 
 **Deliberately not built** (flagged during planning, not silently skipped): `Obb2`/`Obb3` vs `Sphere`/`Circle` intersection; `Triangle3::normal()`/`centroid()`/`area()` helpers; `cargo-llvm-cov`/`cargo-tarpaulin` coverage tooling. Pick any of these up if asked, otherwise leave them alone.
 
