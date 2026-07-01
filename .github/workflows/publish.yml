@@ -31,16 +31,16 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: cargo fmt --check
-        run: cargo fmt --check
+        run: cargo fmt --check --all
 
       - name: cargo clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace -- -D warnings
 
       - name: cargo build
-        run: cargo build
+        run: cargo build --workspace
 
       - name: cargo test
-        run: cargo test
+        run: cargo test --workspace
 
   publish:
     name: Publish to crates.io
@@ -62,7 +62,25 @@ jobs:
           key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-publish-
 
-      - name: cargo publish
-        run: cargo publish
+      - name: Publish m2s2-math
+        run: cargo publish -p m2s2-math
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Publish m2s2-geometry (retry: crates.io index propagation can lag)
+        run: |
+          attempt=1
+          max_attempts=6
+          delay=20
+          until cargo publish -p m2s2-geometry; do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "cargo publish -p m2s2-geometry failed after $attempt attempts"
+              exit 1
+            fi
+            echo "Attempt $attempt/$max_attempts failed, retrying in ${delay}s..."
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

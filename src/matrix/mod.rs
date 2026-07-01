@@ -9,6 +9,7 @@ use std::{
 
 mod base_ops;
 mod identity_ops;
+mod linear_ops;
 mod mat_mul_mat;
 mod mat_mul_vec;
 pub mod transform_impl;

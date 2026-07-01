@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# CI-lite: mirrors the checks .github/workflows/ci.yml runs, so broken builds
+# get caught locally before they ever reach CI.
+set -e
+
+echo "pre-commit: cargo fmt --check --all"
+cargo fmt --check --all
+
+echo "pre-commit: cargo clippy --workspace --all-targets -- -D warnings"
+cargo clippy --workspace --all-targets -- -D warnings
+
+echo "pre-commit: cargo test --workspace"
+cargo test --workspace
+
+echo "pre-commit: all checks passed."

@@ -7,6 +7,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [m2s2-math 0.2.0 / m2s2-geometry 0.1.0] — 2026-07-01
+
+### Added
+
+#### m2s2-math
+
+##### Vectors
+- `Vector<T, D>`: `distance`, `distance_squared`, `lerp`, `reflect`, `project_onto`, `reject_from`, `clamp_length`, `angle_between` (dimension-generic, Float-only)
+- `Vector2Ops`: `cross` (2D perp-dot product)
+
+##### Matrices
+- `Matrix2x2`/`Matrix3x3`/`Matrix4x4`: `trace` (any numeric `T`), `determinant` (cofactor expansion, any numeric `T`), `inverse` (Float-only, Gauss-Jordan elimination with partial pivoting)
+
+#### New crate: m2s2-geometry
+
+Geometric primitives and intersection queries, built on `m2s2-math` and split into
+its own crate so consumers that only need vectors/matrices/quaternions (e.g. a
+renderer) aren't forced to depend on collision/geometry code.
+
+- `Ray2`/`Ray3`: `point_at`
+- `Aabb2`/`Aabb3`: `from_center_half_extents`, `center`, `half_extents`, `size`, `contains_point`, `intersects_aabb`, `union`, `closest_point`, `intersects_circle`/`intersects_sphere`, `intersects_ray` (slab method), `sweep_aabb` (swept AABB vs static AABB)
+- `Circle`/`Sphere`: `contains_point`, `closest_point`, `intersects_circle`/`intersects_sphere`, `intersects_aabb`, `intersects_ray` (quadratic), `sweep_circle`/`sweep_sphere` (continuous collision, relative-velocity solve)
+- `Plane`: `from_point_normal`, `from_points`, `signed_distance`, `intersects_ray`, `intersects_plane`
+- `Triangle3`: `intersects_ray` (double-sided Möller–Trumbore)
+- `Obb2`/`Obb3`: `axes`, `contains_point`, `intersects_obb` (SAT — 4-axis in 2D, full 15-axis in 3D), `intersects_aabb`, `intersects_ray`
+
 ## [0.1.0] — 2026-06-16
 
 Initial release.

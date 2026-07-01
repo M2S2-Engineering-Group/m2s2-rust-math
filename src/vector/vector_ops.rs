@@ -50,6 +50,12 @@ where
 
     /// Rotate 90 degrees counter-clockwise
     fn perpendicular(&self) -> Self;
+
+    /// 2D "cross product" (perp dot product): the Z component of the 3D cross
+    /// product if both vectors were embedded in the XY plane. Positive when
+    /// `other` is counter-clockwise from `self`; useful for winding/orientation
+    /// tests and signed area calculations.
+    fn cross(&self, other: &Self) -> T;
 }
 
 // Generic implementation for Vector3<T> where T: Float
@@ -133,6 +139,10 @@ where
 
     fn perpendicular(&self) -> Self {
         Vector2::new(-self.data[1], self.data[0])
+    }
+
+    fn cross(&self, other: &Self) -> T {
+        self.data[0] * other.data[1] - self.data[1] * other.data[0]
     }
 }
 
@@ -306,6 +316,15 @@ mod tests {
         let v1 = Vector4f32::new(1.0, 2.0, 3.0, 4.0);
         let v2 = Vector4f32::new(5.0, 6.0, 7.0, 8.0);
         assert_eq!(v1.dot(&v2), 70.0); // 1*5 + 2*6 + 3*7 + 4*8
+    }
+
+    #[test]
+    fn test_vector2_cross() {
+        let x = Vector2f32::new(1.0, 0.0);
+        let y = Vector2f32::new(0.0, 1.0);
+        assert_eq!(x.cross(&y), 1.0); // counter-clockwise -> positive
+        assert_eq!(y.cross(&x), -1.0); // clockwise -> negative
+        assert_eq!(x.cross(&x), 0.0); // parallel -> zero
     }
 
     #[test]

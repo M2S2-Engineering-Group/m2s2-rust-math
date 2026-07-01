@@ -1,3 +1,4 @@
+mod vector_algebra;
 pub mod vector_ops;
 
 pub type Vector2<T> = Vector<T, 2>;
@@ -87,9 +88,7 @@ impl<T: Copy, const D: usize> Vector<T, D> {
     pub fn set(&mut self, index: usize, value: T) {
         assert!(
             index < D,
-            "Vector index {} out of bounds for dimension {}",
-            index,
-            D
+            "Vector index {index} out of bounds for dimension {D}"
         );
         self.data[index] = value;
     }
@@ -134,9 +133,7 @@ impl<T, const D: usize> Index<usize> for Vector<T, D> {
     fn index(&self, index: usize) -> &Self::Output {
         assert!(
             index < D,
-            "Vector index {} out of bounds for dimension {}",
-            index,
-            D
+            "Vector index {index} out of bounds for dimension {D}"
         );
         &self.data[index]
     }
@@ -146,9 +143,7 @@ impl<T, const D: usize> IndexMut<usize> for Vector<T, D> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         assert!(
             index < D,
-            "Vector index {} out of bounds for dimension {}",
-            index,
-            D
+            "Vector index {index} out of bounds for dimension {D}"
         );
         &mut self.data[index]
     }

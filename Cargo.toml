@@ -1,6 +1,6 @@
 [package]
 name = "m2s2-math"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Michael Masterson <mgmastersonjr@gmail.com>"]
 description = "A linear algebra library for game engines and renderers — vectors, matrices, and quaternions with multi-API projection support (Vulkan, Metal, OpenGL, D3D)."
@@ -12,3 +12,6 @@ categories = ["game-engines", "mathematics", "rendering"]
 
 [dependencies]
 num-traits = "0.2"
+
+[workspace]
+members = ["m2s2-geometry"]

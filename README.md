@@ -85,6 +85,22 @@ Matrices are stored **row-major** in memory (`data[row * cols + col]`). CPU-side
 
 Before uploading to a GPU API that expects column-major layout (Vulkan, OpenGL), call `.transpose()` on the matrix.
 
+## Allocation strategy
+
+`m2s2-math` and `m2s2-geometry` are allocation-free by design: `Vector`, `Matrix`, `Quaternion`, and every geometry primitive (`Aabb`, `Sphere`, `Obb`, etc.) are fixed-size `Copy` types living entirely on the stack. That's intentional and won't change — it's what keeps per-vertex/per-frame math fast.
+
+Dynamic allocation (mesh vertex/index buffers, a collision world holding many objects, broad-phase structures like a BVH or spatial grid, entity/scene data) belongs one layer up, in the engine/renderer that consumes these crates — not here. When that layer gets built: reach for plain `Vec`/`Box<[T]>` until profiling says otherwise, an arena/bump allocator (e.g. `bumpalo`) for per-frame scratch data like broad-phase pair lists, and a slotmap-style crate (`slotmap`, `generational-arena`) for stable entity handles.
+
+## Development
+
+This repo is a Cargo workspace (`m2s2-math` + `m2s2-geometry`). A pre-commit
+hook mirrors CI (`fmt --check`, `clippy -D warnings`, `test`) so broken builds
+don't get committed. Enable it once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

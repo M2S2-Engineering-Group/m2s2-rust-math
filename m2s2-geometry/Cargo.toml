@@ -1,0 +1,14 @@
+[package]
+name = "m2s2-geometry"
+version = "0.1.0"
+edition = "2024"
+authors = ["Michael Masterson <mgmastersonjr@gmail.com>"]
+description = "Geometric primitives and intersection queries (AABB, OBB, sphere, ray, plane, triangle) built on m2s2-math."
+license = "MIT"
+repository = "https://github.com/mgmaster24/m2s2-rust-math"
+keywords = ["math", "geometry", "collision", "gamedev"]
+categories = ["game-engines", "mathematics"]
+
+[dependencies]
+m2s2-math = { path = "..", version = "0.2.0" }
+num-traits = "0.2"
