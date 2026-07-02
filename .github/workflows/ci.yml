@@ -44,46 +44,84 @@ jobs:
       - name: cargo test
         run: cargo test --workspace
 
-  publish:
-    name: Publish to crates.io
+  commitlint:
+    name: Conventional commit messages
     runs-on: ubuntu-latest
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-publish-
+          fetch-depth: 0
 
-      - name: Publish m2s2-math
-        run: cargo publish -p m2s2-math
+      - name: Check commit messages follow Conventional Commits
+        run: |
+          set -e
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .+'
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            range="${{ github.event.before }}..${{ github.sha }}"
+          else
+            range="${{ github.sha }}~1..${{ github.sha }}"
+          fi
+          fail=0
+          while IFS= read -r line; do
+            sha="${line%% *}"
+            subject="${line#* }"
+            if ! printf '%s' "$subject" | grep -qE "$pattern"; then
+              echo "::error::Commit $sha does not follow Conventional Commits format: \"$subject\""
+              fail=1
+            fi
+          done < <(git log --no-merges --pretty=format:'%H %s' "$range")
+          if [ "$fail" -ne 0 ]; then
+            echo "One or more commits do not follow Conventional Commits (https://www.conventionalcommits.org/)."
+            echo "Expected: <type>(<scope>)!: <description>, type one of feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
+            exit 1
+          fi
+
+  release-plz-pr:
+    name: release-plz PR
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run release-plz release-pr
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish m2s2-geometry (retry - crates.io index propagation can lag)
-        run: |
-          attempt=1
-          max_attempts=6
-          delay=20
-          until cargo publish -p m2s2-geometry; do
-            if [ "$attempt" -ge "$max_attempts" ]; then
-              echo "cargo publish -p m2s2-geometry failed after $attempt attempts"
-              exit 1
-            fi
-            echo "Attempt $attempt/$max_attempts failed, retrying in ${delay}s..."
-            sleep "$delay"
-            attempt=$((attempt + 1))
-            delay=$((delay * 2))
-          done
+  release-plz-release:
+    name: release-plz publish
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run release-plz release
+        uses: release-plz/action@v0.5
+        with:
+          command: release
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

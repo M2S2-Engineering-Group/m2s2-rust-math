@@ -1,0 +1,25 @@
+# Config for release-plz (https://release-plz.dev/docs/config).
+#
+# Release policy for this workspace: every push to main opens/updates a
+# "release PR" (release-pr command) that bumps crate versions + changelogs
+# based on Conventional Commits since the last release. Merging that PR is
+# what makes the next push actually publish (release command) — nothing
+# hits crates.io without that review step. See CLAUDE.md for the full flow.
+
+[workspace]
+# Block a version bump/publish if the new API isn't backward-compatible
+# with the version number being assigned (cargo-semver-checks). This is
+# exactly the kind of mistake this repo already hit once — new methods
+# added without a version bump, before m2s2-math 0.2.0 existed.
+semver_check = true
+# Auto-generate/update each crate's CHANGELOG.md from commit history.
+changelog_update = true
+# Create a GitHub Release (with notes) for each published version/tag.
+git_release_enable = true
+
+# No [[package]] overrides: m2s2-math (the root package) keeps using the
+# existing root CHANGELOG.md by default. m2s2-geometry gets its own
+# m2s2-geometry/CHANGELOG.md — the simplest, best-tested default. A shared
+# single CHANGELOG.md across both crates is possible via `changelog_path` +
+# `changelog_include` (see release-plz docs) but wasn't set up here since
+# it couldn't be verified without a live run against a real GitHub repo.

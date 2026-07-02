@@ -95,11 +95,26 @@ Dynamic allocation (mesh vertex/index buffers, a collision world holding many ob
 
 This repo is a Cargo workspace (`m2s2-math` + `m2s2-geometry`). A pre-commit
 hook mirrors CI (`fmt --check`, `clippy -D warnings`, `test`) so broken builds
-don't get committed. Enable it once per clone:
+don't get committed, and a commit-msg hook enforces the commit format
+required by the release automation below. Enable both once per clone:
 
 ```sh
 git config core.hooksPath .githooks
 ```
+
+### Commit messages & releases
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+`<type>(<scope>)!: <description>`, where `type` is one of `feat`, `fix`,
+`docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+(a leading `!` after the type/scope marks a breaking change). Example:
+`feat(vector): add clamp_length`.
+
+Versioning and publishing are automated by [release-plz](https://release-plz.dev)
+based on those commit messages: every push to `main` that passes CI opens/updates
+a release PR proposing version bumps and changelog updates; merging that PR is
+what triggers the actual `crates.io` publish. Nothing publishes without that
+review step.
 
 ## License
 
