@@ -5,13 +5,25 @@ use num_traits::Float;
 use crate::matrix::{Matrix3x3, Matrix4x4};
 use crate::vector::Vector3;
 
+/// `repr(C)` so the layout is guaranteed (required for the optional
+/// `bytemuck` impls below, and safe to reinterpret for GPU buffer uploads /
+/// FFI). Field order is `w, x, y, z` — note that most shader-facing
+/// conventions (GLSL `vec4`, GPU quaternion buffers) expect `x, y, z, w`
+/// instead, so a raw byte-cast will *not* match that layout; swizzle
+/// explicitly if uploading to a shader that expects `xyzw`.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
 pub struct Quaternion<T> {
     pub w: T,
     pub x: T,
     pub y: T,
     pub z: T,
 }
+
+#[cfg(feature = "bytemuck")]
+unsafe impl<T: bytemuck::Zeroable> bytemuck::Zeroable for Quaternion<T> {}
+#[cfg(feature = "bytemuck")]
+unsafe impl<T: bytemuck::Pod> bytemuck::Pod for Quaternion<T> {}
 
 pub type Quaternionf32 = Quaternion<f32>;
 pub type Quaternionf64 = Quaternion<f64>;
@@ -502,5 +514,30 @@ mod tests {
         assert!(approx_eq(r1.x(), r2.x()));
         assert!(approx_eq(r1.y(), r2.y()));
         assert!(approx_eq(r1.z(), r2.z()));
+    }
+}
+
+#[cfg(all(test, feature = "bytemuck"))]
+mod bytemuck_tests {
+    use super::*;
+
+    #[test]
+    fn test_quaternion_zeroed() {
+        let q: Quaternionf32 = bytemuck::Zeroable::zeroed();
+        assert_eq!(q.w, 0.0);
+        assert_eq!(q.x, 0.0);
+        assert_eq!(q.y, 0.0);
+        assert_eq!(q.z, 0.0);
+    }
+
+    #[test]
+    fn test_quaternion_bytes_of_is_wxyz_order() {
+        // Field order is w, x, y, z -- NOT the x, y, z, w order most
+        // shader-facing conventions expect. This test locks in that layout
+        // so an accidental field reorder would be caught here.
+        let q = Quaternionf32::new(1.0, 2.0, 3.0, 4.0);
+        let bytes = bytemuck::bytes_of(&q);
+        let expected = bytemuck::bytes_of(&[1.0f32, 2.0, 3.0, 4.0]); // w, x, y, z
+        assert_eq!(bytes, expected);
     }
 }

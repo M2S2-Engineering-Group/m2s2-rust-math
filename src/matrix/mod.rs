@@ -17,10 +17,19 @@ pub mod transform_traits;
 
 macro_rules! define_matrix_struct {
     ($name:ident, $rows:expr, $cols:expr, $size:expr) => {
+        /// `repr(C)` so the layout is guaranteed (required for the optional
+        /// `bytemuck` impls below, and safe to reinterpret for GPU buffer
+        /// uploads / FFI).
         #[derive(Debug, Clone, Copy, PartialEq)]
+        #[repr(C)]
         pub struct $name<T> {
             data: [T; $size],
         }
+
+        #[cfg(feature = "bytemuck")]
+        unsafe impl<T: bytemuck::Zeroable> bytemuck::Zeroable for $name<T> {}
+        #[cfg(feature = "bytemuck")]
+        unsafe impl<T: bytemuck::Pod> bytemuck::Pod for $name<T> {}
 
         impl<T: Copy> $name<T>
         where
@@ -186,3 +195,22 @@ pub type Matrix4x4i32 = Matrix4x4<i32>;
 pub type Matrix4x4f32 = Matrix4x4<f32>;
 pub type Matrix4x4i64 = Matrix4x4<i64>;
 pub type Matrix4x4f64 = Matrix4x4<f64>;
+
+#[cfg(all(test, feature = "bytemuck"))]
+mod bytemuck_tests {
+    use super::*;
+
+    #[test]
+    fn test_matrix_zeroed() {
+        let m: Matrix4x4f32 = bytemuck::Zeroable::zeroed();
+        assert_eq!(m.as_slice(), [0.0; 16]);
+    }
+
+    #[test]
+    fn test_matrix_bytes_of_matches_array_layout() {
+        let m = Matrix2x2f32::from_2d_array([[1.0, 2.0], [3.0, 4.0]]);
+        let bytes = bytemuck::bytes_of(&m);
+        let expected = bytemuck::bytes_of(&[1.0f32, 2.0, 3.0, 4.0]);
+        assert_eq!(bytes, expected);
+    }
+}

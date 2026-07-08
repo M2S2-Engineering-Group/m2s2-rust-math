@@ -27,10 +27,18 @@ use std::{
     ptr,
 };
 
+/// `repr(C)` so the layout is guaranteed (required for the optional `bytemuck`
+/// impls below, and safe to reinterpret for GPU buffer uploads / FFI).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(C)]
 pub struct Vector<T, const D: usize> {
     data: [T; D],
 }
+
+#[cfg(feature = "bytemuck")]
+unsafe impl<T: bytemuck::Zeroable, const D: usize> bytemuck::Zeroable for Vector<T, D> {}
+#[cfg(feature = "bytemuck")]
+unsafe impl<T: bytemuck::Pod, const D: usize> bytemuck::Pod for Vector<T, D> {}
 
 impl<T> Vector2<T> {
     #[inline]
@@ -52,6 +60,33 @@ impl<T> Vector4<T> {
         Vector4 { data: [x, y, z, w] }
     }
 }
+
+// `ZERO`/`ONE` can't be provided generically over `T: Zero + One` (num_traits
+// methods aren't const fns), so they're only defined for the concrete
+// numeric type aliases, where `0`/`1` literals are const-evaluable directly.
+macro_rules! impl_vector_consts {
+    ($vec:ident, $dim:expr, $t:ty, $zero:expr, $one:expr) => {
+        impl $vec<$t> {
+            pub const ZERO: Self = $vec {
+                data: [$zero; $dim],
+            };
+            pub const ONE: Self = $vec { data: [$one; $dim] };
+        }
+    };
+}
+
+impl_vector_consts!(Vector2, 2, i32, 0, 1);
+impl_vector_consts!(Vector2, 2, i64, 0, 1);
+impl_vector_consts!(Vector2, 2, f32, 0.0, 1.0);
+impl_vector_consts!(Vector2, 2, f64, 0.0, 1.0);
+impl_vector_consts!(Vector3, 3, i32, 0, 1);
+impl_vector_consts!(Vector3, 3, i64, 0, 1);
+impl_vector_consts!(Vector3, 3, f32, 0.0, 1.0);
+impl_vector_consts!(Vector3, 3, f64, 0.0, 1.0);
+impl_vector_consts!(Vector4, 4, i32, 0, 1);
+impl_vector_consts!(Vector4, 4, i64, 0, 1);
+impl_vector_consts!(Vector4, 4, f32, 0.0, 1.0);
+impl_vector_consts!(Vector4, 4, f64, 0.0, 1.0);
 
 impl<T: Copy, const D: usize> Vector<T, D> {
     pub fn from_slice(elements: &[T]) -> Self {
@@ -222,5 +257,52 @@ impl<T: Add<Output = T> + Sub<Output = T> + Neg<Output = T> + Copy> Vector2<T> {
             rotated_y = translated_x;
         }
         Vector2::new(rotated_x + pivot.data[0], rotated_y + pivot.data[1])
+    }
+}
+
+#[cfg(test)]
+mod consts_tests {
+    use super::*;
+
+    #[test]
+    fn test_vector_zero_one() {
+        assert_eq!(Vector2f32::ZERO.as_slice(), [0.0, 0.0]);
+        assert_eq!(Vector2f32::ONE.as_slice(), [1.0, 1.0]);
+        assert_eq!(Vector3i32::ZERO.as_slice(), [0, 0, 0]);
+        assert_eq!(Vector3i32::ONE.as_slice(), [1, 1, 1]);
+        assert_eq!(Vector4f64::ZERO.as_slice(), [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(Vector4f64::ONE.as_slice(), [1.0, 1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn test_vector_zero_is_identity_for_add() {
+        let v = Vector3f32::new(5.0, -2.0, 3.0);
+        assert_eq!((v + Vector3f32::ZERO).as_slice(), v.as_slice());
+    }
+}
+
+#[cfg(all(test, feature = "bytemuck"))]
+mod bytemuck_tests {
+    use super::*;
+
+    #[test]
+    fn test_vector_zeroed() {
+        let v: Vector4<f32> = bytemuck::Zeroable::zeroed();
+        assert_eq!(v.as_slice(), [0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_vector_bytes_of_matches_array_layout() {
+        let v = Vector4::new(1.0f32, 2.0, 3.0, 4.0);
+        let bytes = bytemuck::bytes_of(&v);
+        let expected = bytemuck::bytes_of(&[1.0f32, 2.0, 3.0, 4.0]);
+        assert_eq!(bytes, expected);
+    }
+
+    #[test]
+    fn test_vector_cast_slice_round_trip() {
+        let vectors = [Vector2::new(1.0f32, 2.0), Vector2::new(3.0, 4.0)];
+        let floats: &[f32] = bytemuck::cast_slice(&vectors);
+        assert_eq!(floats, [1.0, 2.0, 3.0, 4.0]);
     }
 }

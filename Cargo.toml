@@ -12,6 +12,25 @@ categories = ["game-engines", "mathematics", "rendering"]
 
 [dependencies]
 num-traits = "0.2"
+bytemuck = { version = "1", optional = true, features = ["min_const_generics"] }
+
+[features]
+bytemuck = ["dep:bytemuck"]
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "vector"
+harness = false
+
+[[bench]]
+name = "matrix"
+harness = false
+
+[[bench]]
+name = "quaternion"
+harness = false
 
 [workspace]
 members = ["m2s2-geometry"]

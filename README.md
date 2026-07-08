@@ -20,6 +20,7 @@ Provides vectors, matrices, and quaternions with zero heap allocation and stable
 
 - **Look-at** — `look_at_rh` (Vulkan / OpenGL / Metal) and `look_at_lh` (D3D)
 - **Quaternions** — `Quaternion<T>` with Hamilton product, conjugate, inverse, normalize, axis-angle, Euler angles, `rotate_vector`, `to_matrix4x4`, `to_matrix3x3`, `lerp`, `slerp`
+- **Constants** — `Vector2/3/4::ZERO`/`ONE` and `Matrix2x2/3x3/4x4::IDENTITY` for the `i32`/`i64`/`f32`/`f64` type aliases
 
 ## Usage
 
@@ -27,7 +28,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-m2s2-math = "0.1"
+m2s2-math = "0.2"
 ```
 
 ### Vectors
@@ -84,6 +85,44 @@ let qlerp = Quaternionf32::slerp(Quaternionf32::identity(), q, 0.5);
 Matrices are stored **row-major** in memory (`data[row * cols + col]`). CPU-side `M * v` treats `v` as a column vector and gives correct results directly.
 
 Before uploading to a GPU API that expects column-major layout (Vulkan, OpenGL), call `.transpose()` on the matrix.
+
+## GPU interop
+
+`Vector`, `Matrix2x2/3x3/4x4`, and `Quaternion` are all `#[repr(C)]`, so their
+layout is guaranteed and safe to reinterpret as raw bytes for buffer uploads
+or FFI. Enable the optional `bytemuck` feature to get `bytemuck::Pod` +
+`Zeroable` impls for free instead of writing `unsafe` transmutes by hand:
+
+```toml
+[dependencies]
+m2s2-math = { version = "0.2", features = ["bytemuck"] }
+```
+
+```rust
+// bytemuck must also be a direct dependency of your crate to call its free
+// functions — enabling m2s2-math's "bytemuck" feature only adds the trait
+// impls (Pod/Zeroable), not a re-export of the bytemuck crate itself.
+use m2s2_math::Matrix4x4f32;
+
+let mvp = Matrix4x4f32::IDENTITY;
+let bytes: &[u8] = bytemuck::bytes_of(&mvp); // upload straight to a uniform buffer
+```
+
+`Quaternion<T>`'s field order is `w, x, y, z` (matches this crate's `new(w, x,
+y, z)` constructor) — most shader-facing conventions (GLSL `vec4`) expect `x,
+y, z, w` instead, so a raw byte-cast will *not* match that layout. Swizzle
+explicitly if uploading a quaternion to a shader.
+
+## Benchmarks
+
+`m2s2-math` has [criterion](https://github.com/bheisler/criterion.rs) benchmarks for the hot-path Vector/Matrix/Quaternion operations (arithmetic, dot/cross, normalize, matrix multiply/inverse, quaternion rotate/slerp) — the ones that would actually benefit from SIMD. They exist to give any future SIMD work a real baseline to compare against, not as a CI gate (CI only compile-checks them with `--no-run`; timing on shared runners is too noisy to be a reliable pass/fail signal).
+
+```sh
+cargo bench -p m2s2-math                       # run everything, HTML report in target/criterion/report/index.html
+cargo bench -p m2s2-math --bench vector         # just one file (vector.rs / matrix.rs / quaternion.rs)
+cargo bench -p m2s2-math -- --save-baseline before   # save a named baseline before a change
+cargo bench -p m2s2-math -- --baseline before        # compare the current code against it
+```
 
 ## Allocation strategy
 
