@@ -1,6 +1,6 @@
 [package]
 name = "m2s2-geometry"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["Michael Masterson <mgmastersonjr@gmail.com>"]
 description = "Geometric primitives and intersection queries (AABB, OBB, sphere, ray, plane, triangle) built on m2s2-math."
@@ -10,5 +10,5 @@ keywords = ["math", "geometry", "collision", "gamedev"]
 categories = ["game-engines", "mathematics"]
 
 [dependencies]
-m2s2-math = { path = "..", version = "0.2.1" }
+m2s2-math = { path = "..", version = "0.2.2" }
 num-traits = "0.2"
