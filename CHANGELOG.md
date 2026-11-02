@@ -7,7 +7,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [0.2.2](https://github.com/M2S2-Engineering-Group/m2s2-rust-math/compare/m2s2-math-v0.2.1...m2s2-math-v0.2.2) - 2026-07-08
+## [0.2.2](https://github.com/M2S2-Engineering-Group/m2s2-rust-math/compare/m2s2-math-v0.2.1...m2s2-math-v0.2.2) - 2026-11-01
+
+### Added
+
+- Optional `bytemuck` feature: `Vector<T, D>` implements `Pod`/`Zeroable` (under `feature = "bytemuck"`),
+  so vectors can be uploaded directly into GPU buffers — e.g. as vertex-attribute data in a renderer.
 
 ### Fixed
 
